@@ -1,53 +1,967 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>XYZW 游戏管理系统</title>
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>微信扫码下载Bin文件</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; color: #333; min-height: 100vh; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    h1 { text-align: center; margin-bottom: 20px; color: #1a1a1a; font-size: 22px; }
 
-      body {
-        font-family:
-          "SF Pro Display",
-          -apple-system,
-          BlinkMacSystemFont,
-          "Segoe UI",
-          "PingFang SC",
-          "Hiragino Sans GB",
-          "Microsoft YaHei",
-          "Helvetica Neue",
-          Helvetica,
-          Arial,
-          sans-serif;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        min-height: 100vh;
-      }
+    .card { background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .card h3 { margin-bottom: 12px; font-size: 16px; color: #1a1a1a; }
+    .flow-steps { padding-left: 20px; color: #666; font-size: 14px; line-height: 1.8; }
+    .flow-steps strong { color: #e74c3c; }
 
-      #app {
-        min-height: 100vh;
-      }
+    .qrcode-area { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 20px 0; }
+    .qr-placeholder { width: 200px; height: 200px; border: 2px dashed #ccc; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; background: #fafafa; }
+    .qr-placeholder:hover { border-color: #667eea; background: rgba(102,126,234,0.03); }
+    .qr-placeholder svg { width: 48px; height: 48px; fill: #aaa; }
+    .qr-placeholder p { margin-top: 8px; color: #999; font-size: 13px; }
+    .qr-image { width: 200px; height: 200px; border: 2px solid #e0e0e0; border-radius: 12px; }
 
-      .loading {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-        color: white;
-        font-size: 18px;
-      }
-    </style>
-    <script type="module" crossorigin src="./assets/index-1kjwXR0t.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index.css-XUXQwSH0.css">
-  </head>
-  <body>
-    <div id="app">
-      <div class="loading">正在加载应用...</div>
+    .status { text-align: center; font-size: 13px; font-weight: 500; padding: 6px 16px; border-radius: 6px; margin-top: 4px; }
+    .status.info { color: #666; background: #f0f0f0; }
+    .status.success { color: #10b981; background: rgba(16,185,129,0.1); }
+    .status.error { color: #ef4444; background: rgba(239,68,68,0.1); }
+
+    .btn { display: block; width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 15px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+    .btn-primary { background: #667eea; color: #fff; }
+    .btn-primary:hover { background: #5a6fd6; }
+    .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+    .btn-outline { background: #fff; color: #333; border: 1px solid #ddd; margin-top: 8px; }
+    .btn-outline:hover { background: #f5f5f5; }
+    .btn-sm { padding: 6px 12px; font-size: 13px; width: auto; display: inline-block; border-radius: 6px; }
+    .btn-download { background: #3b82f6; color: #fff; }
+    .btn-download:hover { background: #2563eb; }
+
+    .role-card { display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 1px solid #eee; border-radius: 8px; margin-bottom: 8px; background: #fafafa; }
+    .role-info { flex: 1; }
+    .role-name { font-weight: 600; font-size: 15px; color: #1a1a1a; }
+    .role-meta { font-size: 12px; color: #888; margin-top: 4px; }
+    .role-actions { display: flex; gap: 6px; flex-shrink: 0; margin-left: 12px; }
+
+    .search-box { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; margin-bottom: 12px; outline: none; }
+    .search-box:focus { border-color: #667eea; }
+
+    .loading { display: inline-block; width: 16px; height: 16px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-right: 6px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .settings-toggle { cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: space-between; }
+    .settings-toggle .arrow { transition: transform 0.2s; font-size: 12px; color: #999; }
+    .settings-toggle .arrow.open { transform: rotate(90deg); }
+    .settings-body { margin-top: 12px; }
+    .settings-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .settings-row input { flex: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; outline: none; }
+    .settings-row input:focus { border-color: #667eea; }
+    .btn-test { padding: 8px 16px; background: #10b981; color: #fff; border: none; border-radius: 8px; font-size: 13px; cursor: pointer; white-space: nowrap; }
+    .btn-test:hover { background: #059669; }
+    .conn-status { font-size: 12px; padding: 4px 8px; border-radius: 4px; }
+    .conn-status.ok { color: #10b981; background: rgba(16,185,129,0.1); }
+    .conn-status.fail { color: #ef4444; background: rgba(239,68,68,0.1); }
+    .conn-status.checking { color: #f59e0b; background: rgba(245,158,11,0.1); }
+    .hint { font-size: 12px; color: #999; margin-top: 4px; line-height: 1.5; }
+
+    .hidden { display: none; }
+    .empty-hint { text-align: center; color: #999; padding: 20px; font-size: 14px; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>微信扫码下载Bin文件</h1>
+
+  <!-- 代理设置 -->
+  <div class="card">
+    <div class="settings-toggle" onclick="toggleSettings()">
+      <h3 style="margin:0">代理设置</h3>
+      <span id="settings-arrow" class="arrow">&#9654;</span>
     </div>
-  </body>
+    <div id="settings-body" class="settings-body hidden">
+      <div class="settings-row">
+        <input type="text" id="worker-url-input" placeholder="Worker URL, 如: https://xyzw-proxy.workers.dev" />
+        <button class="btn-test" onclick="testWorker()">测试</button>
+      </div>
+      <div id="conn-status" class="conn-status hidden"></div>
+      <div class="hint">
+        需要部署 Cloudflare Worker 作为代理（项目已有 worker.js）。<br/>
+        部署后将 Worker URL 填入上方输入框，点击"测试"确认连接正常。<br/>
+        地址会自动保存到浏览器，下次打开无需重新输入。
+      </div>
+    </div>
+  </div>
+
+  <!-- 流程说明 -->
+  <div class="card">
+    <h3>微信扫码登录流程</h3>
+    <ol class="flow-steps">
+      <li>点击下方按钮获取微信登录二维码</li>
+      <li>使用微信扫码并确认登录</li>
+      <li>系统将获取<strong>该微信下所有角色</strong>的Token信息</li>
+      <li>选择角色后直接下载对应Bin文件</li>
+    </ol>
+  </div>
+
+  <!-- 二维码区域 -->
+  <div class="card">
+    <div class="qrcode-area">
+      <div id="qr-placeholder" class="qr-placeholder" onclick="generateQRCode()">
+        <svg viewBox="0 0 24 24"><path d="M3 11h8V3H3v8zm2-6h4v4H5V5zM3 21h8v-8H3v8zm2-6h4v4H5v-4zM13 3v8h8V3h-8zm6 6h-4V5h4v4zM13 13h2v2h-2zM15 15h2v2h-2zM13 17h2v2h-2zM17 13h2v2h-2zM19 15h2v2h-2zM17 17h2v2h-2zM15 19h2v2h-2zM19 19h2v2h-2z"/></svg>
+        <p>点击获取微信登录二维码</p>
+      </div>
+      <img id="qr-image" class="qr-image hidden" alt="微信登录二维码" />
+      <div id="qr-status" class="status info">点击获取微信登录二维码</div>
+    </div>
+    <button id="btn-qrcode" class="btn btn-primary" onclick="generateQRCode()">获取二维码</button>
+  </div>
+
+  <!-- 角色列表 -->
+  <div id="role-section" class="card hidden">
+    <h3>服务器角色列表（点击下载对应Bin文件）</h3>
+    <input type="text" class="search-box" id="search-input" placeholder="搜索区服号、角色名或角色ID..." oninput="filterRoles()" />
+    <div id="role-list"></div>
+    <div id="role-empty" class="empty-hint hidden">未找到匹配的角色</div>
+  </div>
+
+  <!-- 调试日志 -->
+  <div class="card">
+    <h3>日志</h3>
+    <div id="log-area" style="max-height:200px;overflow-y:auto;font-size:12px;color:#666;line-height:1.6;"></div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// 配置
+// ============================================================
+const CONFIG = {
+  // Cloudflare Worker 代理地址（用户在页面设置中配置）
+  WORKER_URL: (localStorage.getItem('worker_url') || '').replace(/\/+$/, ''),
+  // 游戏服务器直连地址（支持 CORS，无需代理）
+  GAME_API: 'https://xxz-xyzw.hortorgames.com',
+  // 扫码超时时间（毫秒）
+  SCAN_TIMEOUT: 120000,
+};
+
+// ============================================================
+// 日志
+// ============================================================
+function log(msg, type) {
+  const area = document.getElementById('log-area');
+  const line = document.createElement('div');
+  const time = new Date().toLocaleTimeString();
+  line.textContent = `[${time}] ${msg}`;
+  if (type === 'error') line.style.color = '#ef4444';
+  else if (type === 'success') line.style.color = '#10b981';
+  area.appendChild(line);
+  area.scrollTop = area.scrollHeight;
+  console.log(`[${type || 'info'}] ${msg}`);
+}
+
+// ============================================================
+// BON 协议实现
+// ============================================================
+class DataReader {
+  constructor(bytes) {
+    this._data = bytes || new Uint8Array(0);
+    this._view = null;
+    this.position = 0;
+  }
+  get dataView() {
+    return this._view || (this._view = new DataView(this._data.buffer, this._data.byteOffset, this._data.byteLength));
+  }
+  reset(bytes) { this._data = bytes; this.position = 0; this._view = null; }
+  validate(n) { if (this.position + n > this._data.length) { console.error('read eof'); return false; } return true; }
+  readUInt8() { if (!this.validate(1)) return; return this._data[this.position++]; }
+  readInt16() { if (!this.validate(2)) return; const v = this._data[this.position++] | (this._data[this.position++] << 8); return (v << 16) >> 16; }
+  readInt32() { if (!this.validate(4)) return; const v = this._data[this.position++] | (this._data[this.position++] << 8) | (this._data[this.position++] << 16) | (this._data[this.position++] << 24); return v | 0; }
+  readInt64() { const lo = this.readInt32(); if (lo === undefined) return; let _lo = lo; if (_lo < 0) _lo += 0x100000000; const hi = this.readInt32(); if (hi === undefined) return; return _lo + 0x100000000 * hi; }
+  readFloat32() { if (!this.validate(4)) return; const v = this.dataView.getFloat32(this.position, true); this.position += 4; return v; }
+  readFloat64() { if (!this.validate(8)) return; const v = this.dataView.getFloat64(this.position, true); this.position += 8; return v; }
+  read7BitInt() { let value = 0, shift = 0, b = 0, count = 0; do { if (count++ === 35) throw new Error('Format_Bad7BitInt32'); b = this.readUInt8(); value |= (b & 0x7f) << shift; shift += 7; } while ((b & 0x80) !== 0); return value >>> 0; }
+  readUTF() { const len = this.read7BitInt(); return this.readUTFBytes(len); }
+  readUint8Array(length, copy = false) { const start = this.position, end = start + length; const out = copy ? this._data.slice(start, end) : this._data.subarray(start, end); this.position = end; return out; }
+  readUTFBytes(length) { if (length === 0) return ''; if (!this.validate(length)) return; const str = new TextDecoder('utf8').decode(this._data.subarray(this.position, this.position + length)); this.position += length; return str; }
+}
+
+let _sharedBuf = new Uint8Array(524288);
+class DataWriter {
+  constructor() { this.position = 0; this._view = null; this.data = _sharedBuf; }
+  get dataView() { return this._view || (this._view = new DataView(this.data.buffer, 0, this.data.byteLength)); }
+  reset() { this.data = _sharedBuf; this._view = null; this.position = 0; }
+  ensureBuffer(size) { if (this.position + size <= _sharedBuf.byteLength) return; const prev = _sharedBuf; const need = this.position + size; const nextLen = Math.max(Math.floor((_sharedBuf.byteLength * 12) / 10), need); _sharedBuf = new Uint8Array(nextLen); _sharedBuf.set(prev, 0); this.data = _sharedBuf; this._view = null; }
+  writeInt8(v) { this.ensureBuffer(1); this.data[this.position++] = v | 0; }
+  writeInt16(v) { this.ensureBuffer(2); this.data[this.position++] = v | 0; this.data[this.position++] = (v >> 8) & 0xff; }
+  writeInt32(v) { this.ensureBuffer(4); this.data[this.position++] = v | 0; this.data[this.position++] = (v >> 8) & 0xff; this.data[this.position++] = (v >> 16) & 0xff; this.data[this.position++] = (v >> 24) & 0xff; }
+  writeInt64(v) { this.writeInt32(v); if (v < 0) { this.writeInt32(~Math.floor(-v / 0x100000000)); } else { this.writeInt32(Math.floor(v / 0x100000000) | 0); } }
+  writeFloat32(v) { this.ensureBuffer(4); this.dataView.setFloat32(this.position, v, true); this.position += 4; }
+  writeFloat64(v) { this.ensureBuffer(8); this.dataView.setFloat64(this.position, v, true); this.position += 8; }
+  _write7BitInt(v) { let n = v >>> 0; while (n >= 0x80) { this.data[this.position++] = (n & 0xff) | 0x80; n >>>= 7; } this.data[this.position++] = n & 0x7f; }
+  write7BitInt(v) { this.ensureBuffer(5); this._write7BitInt(v); }
+  _7BitIntLen(v) { return v < 0 ? 5 : v < 0x80 ? 1 : v < 0x4000 ? 2 : v < 0x200000 ? 3 : v < 0x10000000 ? 4 : 5; }
+  writeUTF(str) {
+    const t = str.length;
+    if (t === 0) { this.write7BitInt(0); return; }
+    const max = 6 * t;
+    this.ensureBuffer(5 + max);
+    const start = this.position;
+    this.position += this._7BitIntLen(max);
+    const from = this.position;
+    const reserved = from - start;
+    const encoder = new TextEncoder();
+    const { written } = encoder.encodeInto(str, this.data.subarray(this.position));
+    this.position += written;
+    const after = this.position;
+    const size = after - from;
+    this.position = start;
+    this._write7BitInt(size);
+    const used = this.position - start;
+    if (used !== reserved) { this.data.copyWithin(from + (used - reserved), from, after); }
+    this.position = from + size + (used - reserved);
+  }
+  writeUint8Array(src, offset = 0, length) { const start = offset | 0; const end = Math.min(src.byteLength, start + (length ?? src.byteLength)); const n = end - start; if (n <= 0) return; this.ensureBuffer(n); this.data.set(src.subarray(start, end), this.position); this.position += n; }
+  getBytes(clone = false) { return clone ? this.data.slice(0, this.position) : this.data.subarray(0, this.position); }
+}
+
+class BonEncoder {
+  constructor() { this.dw = new DataWriter(); this.strMap = new Map(); }
+  reset() { this.dw.reset(); this.strMap.clear(); }
+  encodeInt(v) { this.dw.writeInt8(1); this.dw.writeInt32(v | 0); }
+  encodeLong(v) { this.dw.writeInt8(2); if (typeof v === 'number') { this.dw.writeInt64(v); } else { this.dw.writeInt32(v.low | 0); this.dw.writeInt32(v.high | 0); } }
+  encodeFloat(v) { this.dw.writeInt8(3); this.dw.writeFloat32(v); }
+  encodeDouble(v) { this.dw.writeInt8(4); this.dw.writeFloat64(v); }
+  encodeNumber(v) { if ((v | 0) === v) this.encodeInt(v); else if (Math.floor(v) === v) this.encodeLong(v); else this.encodeDouble(v); }
+  encodeString(s) { const hit = this.strMap.get(s); if (hit !== undefined) { this.dw.writeInt8(99); this.dw.write7BitInt(hit); return; } this.dw.writeInt8(5); this.dw.writeUTF(s); this.strMap.set(s, this.strMap.size); }
+  encodeBoolean(b) { this.dw.writeInt8(6); this.dw.writeInt8(b ? 1 : 0); }
+  encodeNull() { this.dw.writeInt8(0); }
+  encodeDateTime(d) { this.dw.writeInt8(10); this.dw.writeInt64(d.getTime()); }
+  encodeBinary(u8) { this.dw.writeInt8(7); this.dw.write7BitInt(u8.byteLength); this.dw.writeUint8Array(u8); }
+  encodeArray(arr) { this.dw.writeInt8(9); this.dw.write7BitInt(arr.length); for (let i = 0; i < arr.length; i++) this.encode(arr[i]); }
+  encodeMap(mp) { this.dw.writeInt8(8); this.dw.write7BitInt(mp.size); mp.forEach((v, k) => { this.encode(k); this.encode(v); }); }
+  encodeObject(obj) {
+    this.dw.writeInt8(8);
+    const keys = [];
+    for (const k in obj) {
+      if (!Object.prototype.hasOwnProperty.call(obj, k)) continue;
+      if (k.startsWith('_')) continue;
+      const type = typeof obj[k];
+      if (type === 'function' || type === 'undefined') continue;
+      keys.push(k);
+    }
+    this.dw.write7BitInt(keys.length);
+    for (const k of keys) { this.encode(k); this.encode(obj[k]); }
+  }
+  encode(v) {
+    if (v == null) { this.encodeNull(); return; }
+    switch (v.constructor) {
+      case Number: this.encodeNumber(v); return;
+      case Boolean: this.encodeBoolean(v); return;
+      case String: this.encodeString(v); return;
+      case Array: this.encodeArray(v); return;
+      case Map: this.encodeMap(v); return;
+      case Date: this.encodeDateTime(v); return;
+      case Uint8Array: this.encodeBinary(v); return;
+      default:
+        if (typeof v !== 'object') { this.encodeNull(); return; }
+        this.encodeObject(v); return;
+    }
+  }
+  getBytes(clone = false) { return this.dw.getBytes(clone); }
+}
+
+class BonDecoder {
+  constructor() { this.dr = new DataReader(new Uint8Array(0)); this.strArr = []; }
+  reset(bytes) { this.dr.reset(bytes); this.strArr.length = 0; }
+  decode() {
+    const tag = this.dr.readUInt8();
+    switch (tag) {
+      default: return null;
+      case 1: return this.dr.readInt32();
+      case 2: return this.dr.readInt64();
+      case 3: return this.dr.readFloat32();
+      case 4: return this.dr.readFloat64();
+      case 5: { const s = this.dr.readUTF(); this.strArr.push(s); return s; }
+      case 6: return this.dr.readUInt8() === 1;
+      case 7: { const len = this.dr.read7BitInt(); return this.dr.readUint8Array(len, false); }
+      case 8: { const count = this.dr.read7BitInt(); const obj = {}; for (let i = 0; i < count; i++) { const k = this.decode(); const v = this.decode(); obj[k] = v; } return obj; }
+      case 9: { const len = this.dr.read7BitInt(); const arr = new Array(len); for (let i = 0; i < len; i++) arr[i] = this.decode(); return arr; }
+      case 10: return new Date(this.dr.readInt64());
+      case 99: return this.strArr[this.dr.read7BitInt()];
+    }
+  }
+}
+
+const _bonEnc = new BonEncoder();
+const _bonDec = new BonDecoder();
+const bon = {
+  encode(value, clone = true) { _bonEnc.reset(); _bonEnc.encode(value); return _bonEnc.getBytes(clone); },
+  decode(bytes) { _bonDec.reset(bytes); return _bonDec.decode(); },
+};
+
+// ============================================================
+// "x" 加密方案
+// ============================================================
+const xEncrypt = {
+  encrypt(e) {
+    const rnd = (~~(Math.random() * 0xffffffff)) >>> 0;
+    const n = new Uint8Array(e.length + 4);
+    n[0] = rnd & 0xff; n[1] = (rnd >>> 8) & 0xff; n[2] = (rnd >>> 16) & 0xff; n[3] = (rnd >>> 24) & 0xff;
+    n.set(e, 4);
+    const r = 2 + ~~(Math.random() * 248);
+    for (let i = n.length; --i >= 0; ) n[i] ^= r;
+    n[0] = 112; n[1] = 120;
+    n[2] = (n[2] & 0b10101010) | (((r >> 7) & 1) << 6) | (((r >> 6) & 1) << 4) | (((r >> 5) & 1) << 2) | ((r >> 4) & 1);
+    n[3] = (n[3] & 0b10101010) | (((r >> 3) & 1) << 6) | (((r >> 2) & 1) << 4) | (((r >> 1) & 1) << 2) | (r & 1);
+    return n;
+  },
+  decrypt(e) {
+    const t = (((e[2] >> 6) & 1) << 7) | (((e[2] >> 4) & 1) << 6) | (((e[2] >> 2) & 1) << 5) | ((e[2] & 1) << 4) | (((e[3] >> 6) & 1) << 3) | (((e[3] >> 4) & 1) << 2) | (((e[3] >> 2) & 1) << 1) | (e[3] & 1);
+    for (let n = e.length; --n >= 4; ) e[n] ^= t;
+    return e.subarray(4);
+  }
+};
+
+// 自动检测解密
+const autoDecrypt = {
+  decrypt(e) {
+    if (e.length > 4 && e[0] === 112 && e[1] === 108) {
+      // "lx" scheme - 需要 lz4 解压，这里尝试简单处理
+      log('检测到 lx 编码，尝试解密...', 'info');
+      return lxDecrypt(e);
+    } else if (e.length > 4 && e[0] === 112 && e[1] === 120) {
+      return xEncrypt.decrypt(e);
+    }
+    return e;
+  }
+};
+
+// lx 解密 (简化版，处理 XOR 部分，lz4 需要额外库)
+function lxDecrypt(e) {
+  // lx 格式: [112, 108, ...header..., XOR'd LZ4 data]
+  // 先提取 XOR key
+  const t = (((e[2] >> 6) & 1) << 7) | (((e[2] >> 4) & 1) << 6) | (((e[2] >> 2) & 1) << 5) | ((e[2] & 1) << 4) | (((e[3] >> 6) & 1) << 3) | (((e[3] >> 4) & 1) << 2) | (((e[3] >> 2) & 1) << 1) | (e[3] & 1);
+  const out = new Uint8Array(e.length - 4);
+  for (let i = 4; i < e.length; i++) out[i - 4] = e[i] ^ t;
+  // 尝试 lz4 解压
+  try {
+    return lz4Decompress(out);
+  } catch (err) {
+    log('lz4 解压失败: ' + err.message, 'error');
+    return out;
+  }
+}
+
+// ============================================================
+// 简化版 LZ4 解压 (frame format)
+// ============================================================
+function lz4Decompress(input) {
+  // LZ4 frame: magic 0x184D2204
+  let pos = 0;
+  const readByte = () => input[pos++];
+  const readLE32 = () => { const v = input[pos] | (input[pos+1]<<8) | (input[pos+2]<<16) | (input[pos+3]<<24); pos += 4; return v >>> 0; };
+
+  const magic = readLE32();
+  if (magic !== 0x184D2204) throw new Error('Not LZ4 frame');
+
+  // FLG byte
+  const flg = readByte();
+  const version = (flg >> 6) & 0x3;
+  if (version !== 1) throw new Error('Unsupported LZ4 version');
+  const blockMaxSize = (flg >> 4) & 0x3;
+  const contentSizeFlag = (flg >> 3) & 1;
+  const contentChecksumFlag = (flg >> 2) & 1;
+  const blockChecksumFlag = (flg >> 0) & 1;
+
+  // BD byte
+  readByte();
+
+  let contentSize = 0;
+  if (contentSizeFlag) { contentSize = readLE32(); /* low 32 bits only */ }
+
+  // HC header checksum
+  readByte();
+
+  const outputChunks = [];
+  let totalOut = 0;
+
+  while (pos < input.length) {
+    const blockSize = readLE32();
+    if (blockSize === 0) break; // end mark
+    if (blockSize > 0x7fffffff) {
+      // uncompressed block
+      const data = input.slice(pos, pos + (blockSize & 0x7FFFFFFF));
+      outputChunks.push(data);
+      totalOut += data.length;
+      pos += data.length;
+    } else {
+      // compressed block
+      const blockData = input.slice(pos, pos + blockSize);
+      pos += blockSize;
+      const decompressed = lz4DecompressBlock(blockData);
+      outputChunks.push(decompressed);
+      totalOut += decompressed.length;
+    }
+    if (blockChecksumFlag) pos += 4;
+  }
+
+  // concatenate
+  const result = new Uint8Array(totalOut);
+  let offset = 0;
+  for (const chunk of outputChunks) { result.set(chunk, offset); offset += chunk.length; }
+  return result;
+}
+
+function lz4DecompressBlock(input) {
+  const output = [];
+  let ip = 0;
+  while (ip < input.length) {
+    const token = input[ip++];
+    let litLen = (token >> 4) & 0x0f;
+    if (litLen === 15) { let extra; do { extra = input[ip++]; litLen += extra; } while (extra === 255); }
+    for (let i = 0; i < litLen; i++) output.push(input[ip++]);
+    if (ip >= input.length) break;
+    let matchOff = input[ip] | (input[ip+1] << 8); ip += 2;
+    let matchLen = (token & 0x0f) + 4;
+    if ((token & 0x0f) === 15) { let extra; do { extra = input[ip++]; matchLen += extra; } while (extra === 255); }
+    let matchPos = output.length - matchOff;
+    for (let i = 0; i < matchLen; i++) output.push(output[matchPos + i]);
+  }
+  return new Uint8Array(output);
+}
+
+// ============================================================
+// g_utils: encode / parse
+// ============================================================
+function gEncode(obj) {
+  const bytes = bon.encode(obj, false);
+  const out = xEncrypt.encrypt(bytes);
+  return out.buffer.byteLength === out.length ? out.buffer : out.buffer.slice(0, out.length);
+}
+
+function gParse(buf) {
+  const u8 = new Uint8Array(buf);
+  const plain = autoDecrypt.decrypt(u8);
+  const raw = bon.decode(plain);
+  return {
+    _raw: raw,
+    _rawData: undefined,
+    _data: undefined,
+    get cmd() { return raw.cmd && raw.cmd.toLowerCase(); },
+    get seq() { return raw.seq; },
+    get ack() { return raw.ack; },
+    get code() { return ~~(raw.code || 0); },
+    get error() { return raw.error; },
+    get time() { return raw.time; },
+    get body() { return raw.body; },
+    get rawData() {
+      if (this._rawData !== undefined || this.body === undefined) return this._rawData;
+      this._rawData = bon.decode(this.body);
+      return this._rawData;
+    },
+    getData() {
+      if (this._data !== undefined) return this._data;
+      this._data = this.rawData;
+      return this._data;
+    }
+  };
+}
+
+// ============================================================
+// encodePayload (微信登录加密)
+// ============================================================
+const cipherTable = "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";
+
+function encodePayload(text) {
+  const xorShift = 1, shuffleTimes = 6, step = 3;
+  const mid = codeBase64(text, cipherTable, shuffleTimes, step, xorShift);
+  return encodeBase64(mid);
+}
+
+function codeBase64(text, ct, shuffleTimes, step, xorShift) {
+  const base64Text = encodeBase64(text);
+  if (ct) { const shuffled = transCode(ct, shuffleTimes); const key = getCodeKey(shuffled, step); return dealWithString(base64Text, key, xorShift); }
+  return null;
+}
+
+function encodeBase64(text) { if (!text) return null; return btoa(unescape(encodeURIComponent(text))); }
+
+function transCode(str, times) {
+  if (times <= 0) return str;
+  if (str.length % 2 !== 0) return null;
+  const right = str.substring(Math.floor(str.length / 2));
+  const left = str.substring(0, Math.floor(str.length / 2));
+  return transCode(right, times - 1) + transCode(left, times - 1);
+}
+
+function getCodeKey(str, step) {
+  const chars = str.split(''); const result = []; const count = Math.floor(str.length / step);
+  for (let i = 0; i < count; i++) result.push(chars[i * step]);
+  return result.join('');
+}
+
+function dealWithString(src, key, shift) {
+  if (!src || !key) return null;
+  const v = src.split(''); const w = key.split(''); const out = new Array(v.length);
+  let idx = w.length >> shift;
+  for (let i = 0; i < v.length; i++) { if (idx >= w.length) idx = 0; out[i] = String.fromCharCode(v[i].charCodeAt(0) ^ w[idx].charCodeAt(0)); idx++; }
+  return out.join('');
+}
+
+// ============================================================
+// 状态管理
+// ============================================================
+let qrcodeUUID = null;
+let scanInterval = null;
+let startTime = null;
+let serverRoles = null;  // { serverId: roleInfo, ... }
+let originalBinData = null; // 解码后的 bin 数据对象
+
+function updateStatus(msg, type) {
+  const el = document.getElementById('qr-status');
+  el.textContent = msg;
+  el.className = 'status ' + (type || 'info');
+}
+
+// ============================================================
+// 1. 获取微信二维码
+// ============================================================
+async function generateQRCode() {
+  if (!checkWorkerReady()) return;
+  try {
+    document.getElementById('btn-qrcode').disabled = true;
+    document.getElementById('btn-qrcode').innerHTML = '<span class="loading"></span>获取中...';
+    updateStatus('正在获取二维码...', 'info');
+    resetQRCode();
+
+    const qrPageUrl = CONFIG.WORKER_URL + '/api/weixin' +
+      '/connect/app/qrconnect?appid=wxfb0d5667e5cb1c44' +
+      '&bundleid=com.hortor.games.xyzw' +
+      '&scope=snsapi_base,snsapi_userinfo,snsapi_friend,snsapi_message' +
+      '&state=weixin';
+
+    const response = await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', qrPageUrl, true);
+      xhr.timeout = 15000;
+      xhr.setRequestHeader('Accept', 'text/html');
+      xhr.onload = () => resolve(xhr);
+      xhr.onerror = () => reject(new Error('网络错误'));
+      xhr.ontimeout = () => reject(new Error('请求超时'));
+      xhr.send();
+    });
+
+    if (response.status !== 200) throw new Error('HTTP 状态码：' + response.status);
+
+    const html = response.responseText;
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    let qrUrl = doc.querySelector('img.auth_qrcode')?.src;
+    if (!qrUrl) { const m = html.match(/https:\/\/[^"']*qrcode[^"']*/i); if (m) qrUrl = m[0]; }
+    if (!qrUrl) throw new Error('未找到二维码图片地址');
+
+    qrcodeUUID = qrUrl.split('/').pop().split('?')[0];
+
+    const imgEl = document.getElementById('qr-image');
+    imgEl.src = qrUrl;
+    imgEl.classList.remove('hidden');
+    document.getElementById('qr-placeholder').classList.add('hidden');
+
+    updateStatus('请使用微信扫码登录', 'success');
+    document.getElementById('btn-qrcode').innerHTML = '刷新二维码';
+    document.getElementById('btn-qrcode').disabled = false;
+
+    startScanMonitoring();
+    log('二维码已生成，等待扫码...', 'info');
+  } catch (error) {
+    updateStatus('二维码获取失败：' + error.message, 'error');
+    log('二维码获取失败：' + error.message, 'error');
+    document.getElementById('btn-qrcode').innerHTML = '获取二维码';
+    document.getElementById('btn-qrcode').disabled = false;
+  }
+}
+
+function resetQRCode() {
+  stopScanMonitoring();
+  qrcodeUUID = null;
+  document.getElementById('qr-image').classList.add('hidden');
+  document.getElementById('qr-placeholder').classList.remove('hidden');
+  updateStatus('点击获取微信登录二维码', 'info');
+}
+
+// ============================================================
+// 2. 轮询扫码状态
+// ============================================================
+function startScanMonitoring() {
+  stopScanMonitoring();
+  startTime = Date.now();
+  scanInterval = setInterval(checkScanStatus, 1000);
+}
+
+function stopScanMonitoring() {
+  if (scanInterval) { clearInterval(scanInterval); scanInterval = null; }
+}
+
+async function checkScanStatus() {
+  try {
+    if (!qrcodeUUID) return;
+    const elapsed = Date.now() - startTime;
+    if (elapsed > CONFIG.SCAN_TIMEOUT) {
+      updateStatus('二维码已超时，请重新获取', 'error');
+      stopScanMonitoring(); resetQRCode(); return;
+    }
+
+    const url = CONFIG.WORKER_URL + '/api/weixin-long' + '/connect/l/qrconnect?uuid=' + qrcodeUUID + '&f=url&_=' + Date.now();
+    const res = await new Promise(resolve => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', url, true);
+      xhr.timeout = 5000;
+      xhr.setRequestHeader('Accept', '*/*');
+      xhr.onload = () => resolve(xhr);
+      xhr.onerror = () => resolve({ status: 0 });
+      xhr.ontimeout = () => resolve({ status: 0 });
+      xhr.send();
+    });
+
+    if (res.status === 200) {
+      const text = res.responseText;
+      if (text.includes('window.wx_errcode=405')) {
+        const codeMatch = text.match(/wx_redirecturl='[^']*code=([a-zA-Z0-9]+)/);
+        const nicknameMatch = text.match(/window\.wx_nickname\s*=\s*['"]([^'"]+)['"]/);
+        if (codeMatch) {
+          const code = codeMatch[1];
+          const nickname = nicknameMatch ? nicknameMatch[1] : '';
+          stopScanMonitoring();
+          updateStatus('扫码成功，正在登录... 用户：' + (nickname || '未知用户'), 'success');
+          log('扫码成功，用户：' + nickname, 'success');
+          await handleScanSuccess(code, nickname);
+          return;
+        }
+      }
+      if (text.includes('window.wx_errcode=408')) {
+        updateStatus('二维码已过期，请重新生成', 'error');
+        stopScanMonitoring(); resetQRCode(); return;
+      }
+    }
+
+    const remain = Math.ceil((CONFIG.SCAN_TIMEOUT - elapsed) / 1000);
+    if (remain % 30 === 0 && remain > 0) updateStatus('请扫码，剩余 ' + remain + ' 秒', 'info');
+  } catch (err) {
+    console.error('扫码状态检查失败:', err);
+  }
+}
+
+// ============================================================
+// 3. 扫码成功 → 登录 → 获取角色列表
+// ============================================================
+async function handleScanSuccess(code, nickname) {
+  try {
+    document.getElementById('btn-qrcode').disabled = true;
+    document.getElementById('btn-qrcode').innerHTML = '<span class="loading"></span>处理中...';
+
+    log('正在调用登录接口...', 'info');
+    const combUser = await loginAndGetCombUser(code);
+    log('登录成功，combUser 获取完成', 'success');
+
+    log('正在获取服务器角色列表...', 'info');
+    await getServerRoles(combUser);
+    log('角色列表获取完成', 'success');
+
+    updateStatus('获取成功！请选择角色下载Bin文件', 'success');
+  } catch (err) {
+    updateStatus('处理失败：' + err.message, 'error');
+    log('处理失败：' + err.message, 'error');
+  } finally {
+    document.getElementById('btn-qrcode').disabled = false;
+    document.getElementById('btn-qrcode').innerHTML = '刷新二维码';
+  }
+}
+
+// ============================================================
+// 4. 登录获取 combUser
+// ============================================================
+async function loginAndGetCombUser(code) {
+  const payload = {
+    gameId: 'xyzwapp',
+    code: code,
+    gameTp: 'app',
+    sysInfo: '{"system":"Android","hortorSDKVersion":"4.0.6-cn","model":"22081212C","brand":"Redmi"}',
+    channel: 'android',
+    appFrom: 'com.tencent.mm',
+    noLogin: '2',
+    distinctId: 'DID-a38175b7-14ce-4b36-aa89-3e092ea03ea6',
+    state: 'hortor',
+    packageName: 'com.hortor.games.xyzw',
+    tp: 'app-we',
+    signPrint: 'E6:F7:FE:A9:EC:8E:24:D0:4F:2A:32:50:28:78:E1:C5:5E:70:81:13',
+  };
+
+  const rawJson = JSON.stringify(payload);
+  const encoded = encodePayload(rawJson);
+  log('登录 payload 已加密', 'info');
+
+  const loginUrl = CONFIG.WORKER_URL + '/api/hortor' +
+    '/comb-login-server/api/v1/login' +
+    '?gameId=xyzwapp' +
+    '&timestamp=' + Date.now() +
+    '&version=android-4.2.1-cn-release' +
+    '&cryptVersion=1.1.0' +
+    '&gameTp=app&system=android' +
+    '&deviceUniqueId=DID-0e782e88-2f3b-4f5b-9020-47f5e5a5a026' +
+    '&packageName=com.hortorgames.xyzw';
+
+  const res = await new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', loginUrl, true);
+    xhr.timeout = 15000;
+    xhr.setRequestHeader('Accept', '*/*');
+    xhr.setRequestHeader('Content-Type', 'text/plain; charset=utf-8');
+    xhr.onload = () => resolve(xhr);
+    xhr.onerror = () => reject(new Error('登录失败'));
+    xhr.ontimeout = () => reject(new Error('登录超时'));
+    xhr.send(encoded);
+  });
+
+  if (res.status !== 200) throw new Error('HTTP 状态码：' + res.status);
+
+  const json = JSON.parse(res.responseText);
+  if (json.meta?.errCode !== 0) throw new Error('登录失败：' + json.meta?.errMsg);
+
+  const combUser = json.data?.combUser;
+  if (!combUser) throw new Error('登录响应结构异常');
+  return combUser;
+}
+
+// ============================================================
+// 5. 获取服务器角色列表
+// ============================================================
+async function getServerRoles(combUser) {
+  // 构造 bin 数据: 与游戏 encMsg 格式一致
+  const loginData = {
+    platform: "hortor",
+    platformExt: "mix",
+    info: combUser,
+    serverId: null,
+    scene: 0,
+    referrerInfo: "",
+  };
+  const binBuffer = gEncode(loginData);
+  log('已编码 bin 数据，大小：' + binBuffer.byteLength + ' bytes', 'info');
+
+  // 发送到 serverlist 接口
+  const res = await new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', CONFIG.GAME_API + '/login/serverlist?_seq=3', true);
+    xhr.timeout = 15000;
+    xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+    xhr.responseType = 'arraybuffer';
+    xhr.onload = () => resolve(xhr);
+    xhr.onerror = () => reject(new Error('获取服务器列表失败'));
+    xhr.ontimeout = () => reject(new Error('请求超时'));
+    xhr.send(binBuffer);
+  });
+
+  if (res.status !== 200) throw new Error('HTTP 状态码：' + res.status);
+
+  const msg = gParse(res.response);
+  const data = msg.getData();
+  log('服务器响应已解析', 'info');
+
+  if (!data || !data.roles) {
+    log('响应数据：' + JSON.stringify(data), 'error');
+    throw new Error('服务器响应中未找到角色数据。可能是 bin 编码格式不兼容。');
+  }
+
+  serverRoles = data.roles;
+  // 保存原始 bin 数据用于后续重编码
+  originalBinData = loginData;
+
+  displayRoles(data.roles);
+}
+
+// ============================================================
+// 6. 显示角色列表
+// ============================================================
+function displayRoles(roles) {
+  const section = document.getElementById('role-section');
+  section.classList.remove('hidden');
+
+  const roleArray = Object.values(roles).sort((a, b) => (b.power || 0) - (a.power || 0));
+  renderRoleList(roleArray);
+}
+
+function renderRoleList(roles) {
+  const container = document.getElementById('role-list');
+  const emptyEl = document.getElementById('role-empty');
+
+  if (!roles.length) {
+    container.innerHTML = '';
+    emptyEl.classList.remove('hidden');
+    return;
+  }
+  emptyEl.classList.add('hidden');
+
+  container.innerHTML = roles.map(r => {
+    const sid = Number(r.serverId);
+    let roleIndex = 0;
+    let displaySid = sid;
+    if (sid >= 2000000) { roleIndex = 2; displaySid = sid - 2000000; }
+    else if (sid >= 1000000) { roleIndex = 1; displaySid = sid - 1000000; }
+    const serverNum = displaySid - 27;
+    const power = r.power ? formatPower(r.power) : '未知';
+    const roleName = r.name || '未命名';
+    return '<div class="role-card">' +
+      '<div class="role-info">' +
+      '<div class="role-name">' + escapeHtml(roleName) + '</div>' +
+      '<div class="role-meta">' + serverNum + '服 | 序号' + roleIndex + ' | ID:' + r.roleId + ' | 战力:' + power + '</div>' +
+      '</div>' +
+      '<div class="role-actions">' +
+      '<button class="btn btn-sm btn-download" onclick=\'downloadRole(' + JSON.stringify(r).replace(/'/g, "\\'") + ')\'>下载Bin</button>' +
+      '</div></div>';
+  }).join('');
+}
+
+function filterRoles() {
+  if (!serverRoles) return;
+  const keyword = document.getElementById('search-input').value.trim().toLowerCase();
+  const all = Object.values(serverRoles).sort((a, b) => (b.power || 0) - (a.power || 0));
+  if (!keyword) { renderRoleList(all); return; }
+  const filtered = all.filter(r => {
+    const sid = Number(r.serverId);
+    let displaySid = sid;
+    if (sid >= 2000000) displaySid = sid - 2000000;
+    else if (sid >= 1000000) displaySid = sid - 1000000;
+    const serverNum = String(displaySid - 27);
+    const name = (r.name || '').toLowerCase();
+    const roleId = String(r.roleId || '');
+    return serverNum.includes(keyword) || name.includes(keyword) || roleId.includes(keyword);
+  });
+  renderRoleList(filtered);
+}
+
+// ============================================================
+// 7. 下载角色 Bin 文件
+// ============================================================
+function downloadRole(roleInfo) {
+  if (!originalBinData) {
+    log('Bin 数据丢失，请重新扫码', 'error');
+    return;
+  }
+  try {
+    const newData = Object.assign({}, originalBinData);
+    newData.serverId = roleInfo.serverId;
+    const newBinBuffer = gEncode(newData);
+
+    let sid = Number(roleInfo.serverId);
+    let roleIndex = 0;
+    if (sid >= 2000000) { roleIndex = 2; sid -= 2000000; }
+    else if (sid >= 1000000) { roleIndex = 1; sid -= 1000000; }
+    const serverNum = sid - 27;
+    const fileName = 'bin-' + serverNum + '服-' + roleIndex + '-' + roleInfo.roleId + '-' + (roleInfo.name || '未命名') + '.bin';
+
+    const blob = new Blob([new Uint8Array(newBinBuffer)], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    log('已下载：' + fileName, 'success');
+    updateStatus('已下载：' + fileName, 'success');
+  } catch (e) {
+    log('下载失败：' + e.message, 'error');
+    updateStatus('下载失败：' + e.message, 'error');
+  }
+}
+
+// ============================================================
+// 工具函数
+// ============================================================
+function formatPower(n) {
+  if (n >= 100000000) return (n / 100000000).toFixed(1) + '亿';
+  if (n >= 10000) return (n / 10000).toFixed(1) + '万';
+  return String(n);
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ============================================================
+// 设置面板
+// ============================================================
+function toggleSettings() {
+  const body = document.getElementById('settings-body');
+  const arrow = document.getElementById('settings-arrow');
+  body.classList.toggle('hidden');
+  arrow.classList.toggle('open');
+}
+
+function testWorker() {
+  const url = document.getElementById('worker-url-input').value.trim().replace(/\/+$/, '');
+  const statusEl = document.getElementById('conn-status');
+  statusEl.className = 'conn-status checking';
+  statusEl.textContent = '正在测试连接...';
+  statusEl.classList.remove('hidden');
+
+  if (!url) {
+    statusEl.className = 'conn-status fail';
+    statusEl.textContent = '请输入 Worker URL';
+    return;
+  }
+
+  // 用一个简单请求测试 Worker 是否可达
+  const xhr = new XMLHttpRequest();
+  xhr.open('GET', url + '/api/weixin/connect/app/qrconnect?test=1', true);
+  xhr.timeout = 10000;
+  xhr.onload = function() {
+    if (xhr.status >= 200 && xhr.status < 500) {
+      statusEl.className = 'conn-status ok';
+      statusEl.textContent = '连接成功！状态码: ' + xhr.status;
+      // 保存到 localStorage 和 CONFIG
+      localStorage.setItem('worker_url', url);
+      CONFIG.WORKER_URL = url;
+      log('Worker 连接测试成功: ' + url, 'success');
+    } else {
+      statusEl.className = 'conn-status fail';
+      statusEl.textContent = '连接失败，状态码: ' + xhr.status;
+    }
+  };
+  xhr.onerror = function() {
+    statusEl.className = 'conn-status fail';
+    statusEl.textContent = '连接失败，请检查 URL 和网络';
+  };
+  xhr.ontimeout = function() {
+    statusEl.className = 'conn-status fail';
+    statusEl.textContent = '连接超时';
+  };
+  xhr.send();
+}
+
+// 初始化：恢复保存的 Worker URL 到输入框
+document.getElementById('worker-url-input').value = localStorage.getItem('worker_url') || '';
+
+
+function checkWorkerReady() {
+  if (!CONFIG.WORKER_URL) {
+    updateStatus('请先在"代理设置"中配置 Worker URL', 'error');
+    log('未配置 Worker URL，请在代理设置中填入', 'error');
+    // 展开设置面板
+    document.getElementById('settings-body').classList.remove('hidden');
+    document.getElementById('settings-arrow').classList.add('open');
+    return false;
+  }
+  return true;
+}
+
+// 页面加载完成
+if (CONFIG.WORKER_URL) {
+  log('页面已加载，Worker: ' + CONFIG.WORKER_URL, 'info');
+} else {
+  log('页面已加载，请先在"代理设置"中配置 Cloudflare Worker URL', 'info');
+}
+</script>
+</body>
 </html>
